@@ -15,7 +15,7 @@ except ImportError:
     import pyperclip
 
 # Application Details
-APP_VERSION = "1.0.1"
+APP_VERSION = "1.1.0"
 # Raw URL to fetch version configuration from GitHub
 VERSION_URL = "https://raw.githubusercontent.com/niels012/Hint-Notes-Generator-App/main/version.json"
 
