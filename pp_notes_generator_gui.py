@@ -5,6 +5,8 @@ import sys
 import json
 import urllib.request
 import threading
+import os
+import tempfile
 
 try:
     import pyperclip
@@ -13,7 +15,7 @@ except ImportError:
     import pyperclip
 
 # Application Details
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 # Raw URL to fetch version configuration from GitHub
 VERSION_URL = "https://raw.githubusercontent.com/niels012/Hint-Notes-Generator-App/main/version.json"
 
@@ -208,10 +210,21 @@ class OtherPersonRow(tk.Frame):
 class PPNotesApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("PP Notes Generator")
+        # Updated Title
+        self.title("Hint Notes Generator")
         self.resizable(True, True)
         self.minsize(480, 500)
         self.configure(bg=BG)
+
+        # Set App Icon (PNG or ICO)
+        try:
+            self.iconbitmap("logo.ico")
+        except Exception:
+            try:
+                icon = tk.PhotoImage(file="logo.png")
+                self.iconphoto(False, icon)
+            except Exception:
+                pass
 
         w, h = 540, 780
         sx, sy = self.winfo_screenwidth(), self.winfo_screenheight()
@@ -255,10 +268,10 @@ class PPNotesApp(tk.Tk):
         ham.bind("<Leave>", lambda _: ham.config(bg=ACCENT))
 
         # title (center)
-        tk.Label(hdr, text="PP Notes Generator",
+        tk.Label(hdr, text="Hint Notes Generator",
                  font=("Segoe UI", 14, "bold"),
                  fg="white", bg=ACCENT, pady=14).pack(side="left", expand=True)
-
+        
         # stopwatch (right)
         self._sw_label = tk.Label(
             hdr, text="00:00",
@@ -459,7 +472,7 @@ class PPNotesApp(tk.Tk):
         ).pack(anchor="center")
 
     # ══════════════════════════════════════════════════════════════════════════
-    # MANUAL UPDATE CHECK
+    # MANUAL & SILENT AUTO UPDATE LOGIC
     # ══════════════════════════════════════════════════════════════════════════
 
     def _check_for_updates(self):
@@ -470,31 +483,62 @@ class PPNotesApp(tk.Tk):
             try:
                 req = urllib.request.Request(
                     VERSION_URL,
-                    headers={"User-Agent": "Mozilla/5.0"}
+                    headers={"User-Agent": "HintNotesGeneratorApp/1.0.0"}
                 )
                 with urllib.request.urlopen(req, timeout=5) as resp:
                     data = json.loads(resp.read().decode("utf-8"))
                     latest_version = data.get("version", APP_VERSION)
+                    download_url = data.get("download_url", "")
                     
-                    self.after(0, lambda: self._handle_update_response(latest_version))
+                    self.after(0, lambda: self._handle_update_response(latest_version, download_url))
             except Exception as err:
-                self.after(0, lambda: self._handle_update_response(None, str(err)))
+                self.after(0, lambda: self._handle_update_response(None, "", str(err)))
 
         threading.Thread(target=_fetch, daemon=True).start()
 
-    def _handle_update_response(self, latest_version, error=None):
+    def _handle_update_response(self, latest_version, download_url="", error=None):
         self._check_update_btn.config(text="Check for Updates", bg=BTN_UNSEL)
         if error:
             messagebox.showerror("Update Error", f"Failed to check for updates.\n\nError: {error}")
             return
 
         if latest_version and latest_version > APP_VERSION:
-            messagebox.showinfo(
+            answer = messagebox.askyesno(
                 "Update Available",
-                f"A new version is available!\n\nCurrent Version: {APP_VERSION}\nLatest Version: {latest_version}"
+                f"A new version is available!\n\n"
+                f"Current Version: {APP_VERSION}\n"
+                f"Latest Version: {latest_version}\n\n"
+                f"Would you like to update now?"
             )
+            if answer and download_url:
+                self._download_and_install_update(download_url)
         else:
             messagebox.showinfo("Up to Date", f"You are using the latest version (v{APP_VERSION}).")
+
+    def _download_and_install_update(self, download_url):
+        """Downloads the installer to %TEMP% and runs it silently."""
+        self._check_update_btn.config(text="Updating...", bg=BTN_UNSEL)
+
+        def _download_thread():
+            try:
+                temp_dir = tempfile.gettempdir()
+                installer_path = os.path.join(temp_dir, "Hint_Notes_Generator_Update.exe")
+
+                req = urllib.request.Request(
+                    download_url,
+                    headers={"User-Agent": "HintNotesGeneratorApp/1.0.0"}
+                )
+                with urllib.request.urlopen(req, timeout=30) as response, open(installer_path, "wb") as out_file:
+                    out_file.write(response.read())
+
+                subprocess.Popen([installer_path, "/SILENT", "/NORESTART", "/CLOSEAPPLICATIONS"])
+                self.after(500, self.destroy)
+
+            except Exception as err:
+                self.after(0, lambda: messagebox.showerror("Update Failed", f"Could not download update.\n\nError: {err}"))
+                self.after(0, lambda: self._check_update_btn.config(text="Check for Updates", bg=BTN_UNSEL))
+
+        threading.Thread(target=_download_thread, daemon=True).start()
 
     # ══════════════════════════════════════════════════════════════════════════
     # SETTINGS PANEL
@@ -578,7 +622,6 @@ class PPNotesApp(tk.Tk):
             self._output.config(state="disabled")
 
     def _on_interaction(self):
-        # Archive output whenever the user starts a new selection
         self._archive_current_output()
 
         if not self._sw_enabled.get():
@@ -650,7 +693,6 @@ class PPNotesApp(tk.Tk):
 
         note = " ".join(parts)
 
-        # Archive active note to history before writing new note
         self._archive_current_output()
 
         self._output.config(state="normal")
@@ -709,7 +751,6 @@ class PPNotesApp(tk.Tk):
             )
             copy_btn.pack(side="right", padx=8, pady=4)
 
-            # Bind copy events directly to the item text
             copy_btn.bind(
                 "<Button-1>",
                 lambda _, t=text, b=copy_btn: self._copy_history_item(t, b)
