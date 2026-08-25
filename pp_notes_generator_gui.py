@@ -15,7 +15,7 @@ except ImportError:
     import pyperclip
 
 # Application Details
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 # Raw URL to fetch version configuration from GitHub
 VERSION_URL = "https://raw.githubusercontent.com/niels012/Hint-Notes-Generator-App/main/version.json"
 
@@ -465,7 +465,7 @@ class PPNotesApp(tk.Tk):
         footer.pack(fill="x", side="bottom", pady=8)
         tk.Label(
             footer,
-            text="by: Nilo Urmeneta Jr | © 2026",
+            text="by: Nilo A. Urmeneta Jr | © 2026",
             font=FONT_SMALL,
             fg=TEXT_DIM,
             bg=BG
