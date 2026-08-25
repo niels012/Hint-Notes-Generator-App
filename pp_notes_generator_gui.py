@@ -531,8 +531,13 @@ class PPNotesApp(tk.Tk):
                 with urllib.request.urlopen(req, timeout=30) as response, open(installer_path, "wb") as out_file:
                     out_file.write(response.read())
 
-                subprocess.Popen([installer_path, "/SILENT", "/NORESTART", "/CLOSEAPPLICATIONS"])
-                self.after(500, self.destroy)
+                # Force-kill any running instances of the app executable first
+                if sys.platform == "win32":
+                    os.system("taskkill /f /im Hint_Notes_Generator.exe")
+
+                # Launch installer silently
+                subprocess.Popen([installer_path, "/SILENT", "/NORESTART", "/CLOSEAPPLICATIONS", "/RESTARTAPPLICATIONS"])
+                self.after(100, self.destroy)
 
             except Exception as err:
                 self.after(0, lambda: messagebox.showerror("Update Failed", f"Could not download update.\n\nError: {err}"))

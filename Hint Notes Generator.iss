@@ -1,8 +1,8 @@
 ; Inno Setup Script for Hint Notes Generator
 #define MyAppName "Hint Notes Generator"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "Nilo Urmeneta Jr"
-#define MyAppExeName "pp_notes_generator_gui.exe"
+#define MyAppExeName "Hint_Notes_Generator.exe"
 
 [Setup]
 AppId={{A3C1D2E4-5F6G-7H8I-9J0K-1L2M3N4O5P6Q}
@@ -13,7 +13,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=.
-OutputBaseFilename=Hint_Notes_Generator_Setup_v1.0.0
+OutputBaseFilename=Hint_Notes_Generator_Setup_v1.2.0
 SetupIconFile=favicon_io\favicon.ico
 Compression=lzma
 SolidCompression=yes
