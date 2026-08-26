@@ -1,6 +1,6 @@
 ; Inno Setup Script for Hint Notes Generator
 #define MyAppName "Hint Notes Generator"
-#define MyAppVersion "1.2.2"
+#define MyAppVersion "1.3.1"
 #define MyAppPublisher "Nilo Urmeneta Jr"
 #define MyAppExeName "Hint_Notes_Generator.exe"
 
@@ -9,7 +9,8 @@ AppId={{A3C1D2E4-5F6G-7H8I-9J0K-1L2M3N4O5P6Q}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={autopf}\{#MyAppName}
+PrivilegesRequired=lowest
+DefaultDirName={localappdata}\Programs\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir=.
@@ -37,4 +38,4 @@ Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFile
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\favicon.ico"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall

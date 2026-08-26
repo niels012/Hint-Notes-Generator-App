@@ -15,12 +15,14 @@ except ImportError:
     import pyperclip
 
 # Application Details
-APP_VERSION = "1.3.0"
+APP_VERSION = "1.3.1"
 # Raw URL to fetch version configuration from GitHub
 VERSION_URL = "https://raw.githubusercontent.com/niels012/Hint-Notes-Generator-App/main/version.json"
 
 WHATS_NEW = [
     "Added an \"Always on Top\" toggle in Settings, so the app can stay above other windows.",
+    "Fixed the auto-updater silently failing to install updates.",
+    "The app now reopens automatically after an update finishes installing.",
 ]
 
 BG          = "#1E1E2E"
@@ -598,13 +600,20 @@ class PPNotesApp(tk.Tk):
                 with urllib.request.urlopen(req, timeout=30) as response, open(installer_path, "wb") as out_file:
                     out_file.write(response.read())
 
-                # Force-kill any running instances of the app executable first
-                if sys.platform == "win32":
-                    os.system("taskkill /f /im Hint_Notes_Generator.exe")
-
-                # Launch installer silently
-                subprocess.Popen([installer_path, "/SILENT", "/NORESTART", "/CLOSEAPPLICATIONS", "/RESTARTAPPLICATIONS"])
-                self.after(100, self.destroy)
+                # Launch installer silently. Inno Setup's CloseApplications=force
+                # + AppMutex (see the .iss) already closes the running app as a
+                # synchronized step of its own install process — we must NOT
+                # taskkill ourselves here, since when running as the installed
+                # .exe, our own process image is named Hint_Notes_Generator.exe
+                # too, and killing it here would abort the update before the
+                # installer even launches.
+                #
+                # /NORESTARTAPPLICATIONS: the .iss's own [Run] postinstall entry
+                # is what relaunches the app after install; letting Inno's Restart
+                # Manager ALSO relaunch the app it force-closed would start two
+                # instances.
+                subprocess.Popen([installer_path, "/SILENT", "/NORESTART", "/CLOSEAPPLICATIONS", "/NORESTARTAPPLICATIONS"])
+                self.after(300, self.destroy)
 
             except Exception as err:
                 self.after(0, lambda: messagebox.showerror("Update Failed", f"Could not download update.\n\nError: {err}"))
