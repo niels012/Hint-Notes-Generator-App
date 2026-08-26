@@ -15,9 +15,16 @@ except ImportError:
     import pyperclip
 
 # Application Details
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.2.2"
 # Raw URL to fetch version configuration from GitHub
 VERSION_URL = "https://raw.githubusercontent.com/niels012/Hint-Notes-Generator-App/main/version.json"
+
+WHATS_NEW = [
+    "The app window now opens sized to fit the form, instead of leaving blank space below it.",
+    "A slimmer, low-profile scrollbar that blends into the background.",
+    "Fixed a bug where removing the last \"Standardize Others\" entry left blank space behind.",
+    "The footer now shows the current app version at a glance.",
+]
 
 BG          = "#1E1E2E"
 PANEL       = "#2A2A3E"
@@ -226,10 +233,6 @@ class PPNotesApp(tk.Tk):
             except Exception:
                 pass
 
-        w, h = 540, 780
-        sx, sy = self.winfo_screenwidth(), self.winfo_screenheight()
-        self.geometry(f"{w}x{h}+{(sx-w)//2}+{(sy-h)//2}")
-
         self._field_toggles: list[ToggleButton] = []
         self._attach_radios: list[RadioButton] = []
         self._attach_var = tk.StringVar(value="")
@@ -249,6 +252,21 @@ class PPNotesApp(tk.Tk):
         self._sw_blink_on  = False
 
         self._build_ui()
+        self._size_to_content()
+
+    def _size_to_content(self):
+        """Sizes the window to show content up through the Generated Note box;
+        everything below (history, reset, footer) stays reachable by scrolling."""
+        self.update_idletasks()
+        w = 540
+        header_h = self._header.winfo_reqheight()
+        footer_h = self._footer.winfo_reqheight()
+        visible_body_h = self._out_frame.winfo_y() + self._out_frame.winfo_height() + 16
+        h = header_h + visible_body_h + footer_h
+        h = min(h, self.winfo_screenheight() - 80)
+        h = max(h, self.minsize()[1])
+        sx, sy = self.winfo_screenwidth(), self.winfo_screenheight()
+        self.geometry(f"{w}x{h}+{(sx-w)//2}+{(sy-h)//2}")
 
     # ══════════════════════════════════════════════════════════════════════════
     # UI BUILD
@@ -258,6 +276,7 @@ class PPNotesApp(tk.Tk):
         # ── sticky header bar (never scrolls) ─────────────────────────────────
         hdr = tk.Frame(self, bg=ACCENT)
         hdr.pack(fill="x", side="top")
+        self._header = hdr
 
         # hamburger (left)
         ham = tk.Label(hdr, text="☰", font=("Segoe UI", 14),
@@ -313,7 +332,7 @@ class PPNotesApp(tk.Tk):
 
         # Check for Updates button in Settings
         update_row = tk.Frame(self._settings_frame, bg=PANEL)
-        update_row.pack(fill="x", padx=16, pady=(4, 10))
+        update_row.pack(fill="x", padx=16, pady=(4, 4))
         tk.Label(update_row, text=f"App Version: v{APP_VERSION}",
                  font=FONT_BODY, fg=TEXT_DIM, bg=PANEL).pack(side="left")
 
@@ -326,16 +345,51 @@ class PPNotesApp(tk.Tk):
         self._check_update_btn.pack(side="right")
         self._check_update_btn.bind("<Button-1>", lambda _: self._check_for_updates())
 
+        # "What's New" link in Settings — expands inline, right below the link
+        whats_new_row = tk.Frame(self._settings_frame, bg=PANEL)
+        whats_new_row.pack(fill="x", padx=16, pady=(4, 10))
+
+        self._whats_new_link = tk.Label(
+            whats_new_row, text="✨ What's New in this version  ▾",
+            font=("Segoe UI", 9, "underline"),
+            fg=ACCENT_HOV, bg=PANEL, cursor="hand2",
+        )
+        self._whats_new_link.pack(side="left")
+        self._whats_new_link.bind("<Button-1>", lambda _: self._toggle_whats_new())
+        self._whats_new_link.bind("<Enter>", lambda _: self._whats_new_link.config(fg="white"))
+        self._whats_new_link.bind("<Leave>", lambda _: self._whats_new_link.config(fg=ACCENT_HOV))
+
+        self._whats_new_panel = tk.Frame(self._settings_frame, bg="#22223A")
+        self._whats_new_expanded = False
+
+        list_frame = tk.Frame(self._whats_new_panel, bg="#22223A")
+        list_frame.pack(fill="x", padx=16, pady=(4, 12))
+        for item in WHATS_NEW:
+            row = tk.Frame(list_frame, bg="#22223A")
+            row.pack(fill="x", pady=3, anchor="n")
+            tk.Label(row, text="•", font=FONT_SMALL, fg=ACCENT_HOV,
+                     bg="#22223A").pack(side="left", anchor="n")
+            tk.Label(row, text=item, font=FONT_SMALL, fg=TEXT, bg="#22223A",
+                     wraplength=420, justify="left",
+                     anchor="w").pack(side="left", padx=(8, 0), fill="x")
+
         # ── scrollable canvas ──────────────────────────────────────────────────
         container = tk.Frame(self, bg=BG)
         container.pack(fill="both", expand=True, side="top")
 
-        scrollbar = AutoScrollbar(container, orient="vertical")
+        scrollbar = AutoScrollbar(
+            container, orient="vertical",
+            width=8, bd=0, relief="flat", elementborderwidth=0,
+            highlightthickness=0,
+            troughcolor=BG, bg="#4A4A62",
+            activebackground=ACCENT_HOV,
+        )
 
         canvas = tk.Canvas(container, bg=BG, highlightthickness=0,
                             yscrollcommand=scrollbar.set)
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.config(command=canvas.yview)
+        self._canvas = canvas
 
         self._body = tk.Frame(canvas, bg=BG, padx=24, pady=16)
         self._body_win = canvas.create_window(
@@ -344,8 +398,7 @@ class PPNotesApp(tk.Tk):
 
         canvas.bind("<Configure>",
                     lambda e: canvas.itemconfig(self._body_win, width=e.width))
-        self._body.bind("<Configure>",
-                        lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        self._body.bind("<Configure>", self._on_body_resize)
         canvas.bind_all(
             "<MouseWheel>",
             lambda e: canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"),
@@ -432,6 +485,7 @@ class PPNotesApp(tk.Tk):
         # ── Output box ─────────────────────────────────────────────────────────
         out_frame = tk.Frame(body, bg=PANEL)
         out_frame.pack(fill="x", pady=12)
+        self._out_frame = out_frame
 
         out_hdr = tk.Frame(out_frame, bg=PANEL)
         out_hdr.pack(fill="x", padx=14, pady=8)
@@ -463,9 +517,10 @@ class PPNotesApp(tk.Tk):
         # ── Sticky Footer (bottom of app window) ──────────────────────────────
         footer = tk.Frame(self, bg=BG)
         footer.pack(fill="x", side="bottom", pady=8)
+        self._footer = footer
         tk.Label(
             footer,
-            text="by: Nilo A. Urmeneta Jr | © 2026",
+            text=f"by: Nilo A. Urmeneta Jr | © 2026 | v{APP_VERSION}",
             font=FONT_SMALL,
             fg=TEXT_DIM,
             bg=BG
@@ -574,6 +629,16 @@ class PPNotesApp(tk.Tk):
             self._hist_toggle_btn.config(text="OFF", bg=BTN_UNSEL)
             self._history_frame.pack_forget()
 
+    def _toggle_whats_new(self):
+        """Expands/collapses the What's New list directly under its link."""
+        self._whats_new_expanded = not self._whats_new_expanded
+        if self._whats_new_expanded:
+            self._whats_new_link.config(text="✨ What's New in this version  ▴")
+            self._whats_new_panel.pack(fill="x")
+        else:
+            self._whats_new_link.config(text="✨ What's New in this version  ▾")
+            self._whats_new_panel.pack_forget()
+
     # ══════════════════════════════════════════════════════════════════════════
     # STOPWATCH
     # ══════════════════════════════════════════════════════════════════════════
@@ -643,6 +708,12 @@ class PPNotesApp(tk.Tk):
     # HELPERS
     # ══════════════════════════════════════════════════════════════════════════
 
+    def _on_body_resize(self, _event=None):
+        """Keeps the scroll view clamped to the (possibly shrunk) content,
+        so removing a row doesn't leave dangling blank space below it."""
+        self._canvas.configure(scrollregion=self._canvas.bbox("all"))
+        self._canvas.yview_moveto(self._canvas.yview()[0])
+
     def _divider(self, parent):
         tk.Frame(parent, bg=BTN_BORDER, height=1).pack(fill="x", pady=10)
 
@@ -668,6 +739,12 @@ class PPNotesApp(tk.Tk):
     def _remove_person(self, row):
         row.destroy()
         self._other_rows.remove(row)
+        if not self._other_rows:
+            # Tk quirk: a frame doesn't re-shrink when its last child is
+            # destroyed, so rebuild it fresh to reclaim the space.
+            self._others_container.destroy()
+            self._others_container = tk.Frame(self._others_body, bg=BG)
+            self._others_container.pack(fill="x", before=self._sec3_divider)
         self._on_interaction()
 
     # ══════════════════════════════════════════════════════════════════════════
