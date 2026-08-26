@@ -15,15 +15,12 @@ except ImportError:
     import pyperclip
 
 # Application Details
-APP_VERSION = "1.2.2"
+APP_VERSION = "1.3.0"
 # Raw URL to fetch version configuration from GitHub
 VERSION_URL = "https://raw.githubusercontent.com/niels012/Hint-Notes-Generator-App/main/version.json"
 
 WHATS_NEW = [
-    "The app window now opens sized to fit the form, instead of leaving blank space below it.",
-    "A slimmer, low-profile scrollbar that blends into the background.",
-    "Fixed a bug where removing the last \"Standardize Others\" entry left blank space behind.",
-    "The footer now shows the current app version at a glance.",
+    "Added an \"Always on Top\" toggle in Settings, so the app can stay above other windows.",
 ]
 
 BG          = "#1E1E2E"
@@ -243,6 +240,7 @@ class PPNotesApp(tk.Tk):
         # ── settings state ────────────────────────────────────────────────────
         self._sw_enabled       = tk.BooleanVar(value=True)
         self._history_enabled  = tk.BooleanVar(value=True)
+        self._always_on_top    = tk.BooleanVar(value=False)
         
         # ── stopwatch state ───────────────────────────────────────────────────
         self._sw_seconds   = 0
@@ -318,7 +316,7 @@ class PPNotesApp(tk.Tk):
 
         hist_row = tk.Frame(self._settings_frame, bg=PANEL)
         hist_row.pack(fill="x", padx=16, pady=(4, 4))
-        tk.Label(hist_row, text="Show Previously Generated",
+        tk.Label(hist_row, text="Show Previously Generated Note",
                  font=FONT_BODY, fg=TEXT, bg=PANEL).pack(side="left")
 
         self._hist_toggle_btn = tk.Label(
@@ -329,6 +327,20 @@ class PPNotesApp(tk.Tk):
         )
         self._hist_toggle_btn.pack(side="right")
         self._hist_toggle_btn.bind("<Button-1>", lambda _: self._toggle_history_enabled())
+
+        aot_row = tk.Frame(self._settings_frame, bg=PANEL)
+        aot_row.pack(fill="x", padx=16, pady=(4, 4))
+        tk.Label(aot_row, text="Always on Top",
+                 font=FONT_BODY, fg=TEXT, bg=PANEL).pack(side="left")
+
+        self._aot_toggle_btn = tk.Label(
+            aot_row, text="OFF",
+            font=("Segoe UI", 9, "bold"),
+            fg="white", bg=BTN_UNSEL,
+            padx=10, pady=3, cursor="hand2",
+        )
+        self._aot_toggle_btn.pack(side="right")
+        self._aot_toggle_btn.bind("<Button-1>", lambda _: self._toggle_always_on_top())
 
         # Check for Updates button in Settings
         update_row = tk.Frame(self._settings_frame, bg=PANEL)
@@ -628,6 +640,14 @@ class PPNotesApp(tk.Tk):
         else:
             self._hist_toggle_btn.config(text="OFF", bg=BTN_UNSEL)
             self._history_frame.pack_forget()
+
+    def _toggle_always_on_top(self):
+        self._always_on_top.set(not self._always_on_top.get())
+        self.attributes("-topmost", self._always_on_top.get())
+        if self._always_on_top.get():
+            self._aot_toggle_btn.config(text="ON", bg=ACCENT)
+        else:
+            self._aot_toggle_btn.config(text="OFF", bg=BTN_UNSEL)
 
     def _toggle_whats_new(self):
         """Expands/collapses the What's New list directly under its link."""
