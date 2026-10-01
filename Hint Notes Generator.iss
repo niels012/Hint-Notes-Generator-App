@@ -1,6 +1,6 @@
 ; Inno Setup Script for Hint Notes Generator
 #define MyAppName "Hint Notes Generator"
-#define MyAppVersion "1.3.1"
+#define MyAppVersion "1.4.0"
 #define MyAppPublisher "Nilo Urmeneta Jr"
 #define MyAppExeName "Hint_Notes_Generator.exe"
 

@@ -15,14 +15,13 @@ except ImportError:
     import pyperclip
 
 # Application Details
-APP_VERSION = "1.3.1"
+APP_VERSION = "1.4.0"
 # Raw URL to fetch version configuration from GitHub
 VERSION_URL = "https://raw.githubusercontent.com/niels012/Hint-Notes-Generator-App/main/version.json"
 
 WHATS_NEW = [
-    "Added an \"Always on Top\" toggle in Settings, so the app can stay above other windows.",
-    "Fixed the auto-updater silently failing to install updates.",
-    "The app now reopens automatically after an update finishes installing.",
+    "Selecting \"Others\" under \"What did you attach?\" now shows two quick options: "
+    "\"PP❌, spouse✅\" and \"PP✅, spouse❌\", which add the matching note.",
 ]
 
 BG          = "#1E1E2E"
@@ -58,6 +57,11 @@ ATTACHMENTS = [
     ("2", "PP and parents"),
     ("3", "PP and spouse"),
     ("4", "Others"),
+]
+# Sub-options shown when "Others" is selected: (value, button label, note text)
+OTHERS_ATTACHMENTS = [
+    ("1", "PP❌, spouse✅", "PP do not match, Attached spouse."),
+    ("2", "PP✅, spouse❌", "Attached PP, spouse do not match."),
 ]
 
 
@@ -235,6 +239,8 @@ class PPNotesApp(tk.Tk):
         self._field_toggles: list[ToggleButton] = []
         self._attach_radios: list[RadioButton] = []
         self._attach_var = tk.StringVar(value="")
+        self._others_attach_radios: list[RadioButton] = []
+        self._others_attach_var = tk.StringVar(value="")
         self._other_rows: list[OtherPersonRow] = []
         
         self._history: list[str] = []
@@ -456,6 +462,17 @@ class PPNotesApp(tk.Tk):
             rb.grid(row=0, column=col, padx=4, pady=4, sticky="ew")
             attach_grid.columnconfigure(col, weight=1)
             self._attach_radios.append(rb)
+
+        # Sub-options for "Others" — only packed while "Others" is selected
+        self._attach_grid = attach_grid
+        self._others_attach_grid = tk.Frame(body, bg=BG)
+        for col, (val, label, _note) in enumerate(OTHERS_ATTACHMENTS):
+            rb = RadioButton(self._others_attach_grid, label,
+                             value=val, var=self._others_attach_var,
+                             command=self._on_others_attach_change)
+            rb.grid(row=0, column=col, padx=4, pady=4, sticky="ew")
+            self._others_attach_grid.columnconfigure(col, weight=1)
+            self._others_attach_radios.append(rb)
 
         self._divider(body)
 
@@ -749,7 +766,26 @@ class PPNotesApp(tk.Tk):
     def _on_attach_change(self):
         for rb in self._attach_radios:
             rb.refresh()
+        self._sync_others_attach_visibility()
         self._on_interaction()
+
+    def _on_others_attach_change(self):
+        for rb in self._others_attach_radios:
+            rb.refresh()
+        self._on_interaction()
+
+    def _sync_others_attach_visibility(self):
+        """Shows the Others sub-options only while "Others" is selected,
+        clearing any sub-selection when they get hidden."""
+        if self._attach_var.get() == "4":
+            if not self._others_attach_grid.winfo_ismapped():
+                self._others_attach_grid.pack(fill="x", pady=(0, 4),
+                                              after=self._attach_grid)
+        else:
+            self._others_attach_grid.pack_forget()
+            self._others_attach_var.set("")
+            for rb in self._others_attach_radios:
+                rb.refresh()
 
     # ══════════════════════════════════════════════════════════════════════════
     # SECTION 3 LOGIC
@@ -784,7 +820,11 @@ class PPNotesApp(tk.Tk):
         parts = []
 
         attach_val = self._attach_var.get()
-        if attach_val:
+        others_val = self._others_attach_var.get()
+        if attach_val == "4" and others_val:
+            others_notes = {val: note for val, _label, note in OTHERS_ATTACHMENTS}
+            parts.append(others_notes[others_val])
+        elif attach_val:
             attachment = dict(ATTACHMENTS)[attach_val]
             parts.append(f"Attached {attachment}.")
 
@@ -883,6 +923,7 @@ class PPNotesApp(tk.Tk):
         self._attach_var.set("")
         for rb in self._attach_radios:
             rb.refresh()
+        self._sync_others_attach_visibility()
         self._others_container.destroy()
         self._other_rows.clear()
         self._others_container = tk.Frame(self._others_body, bg=BG)
