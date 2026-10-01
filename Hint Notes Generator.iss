@@ -1,6 +1,6 @@
 ; Inno Setup Script for Hint Notes Generator
 #define MyAppName "Hint Notes Generator"
-#define MyAppVersion "1.4.0"
+#define MyAppVersion "1.4.1"
 #define MyAppPublisher "Nilo Urmeneta Jr"
 #define MyAppExeName "Hint_Notes_Generator.exe"
 
@@ -39,3 +39,20 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilen
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall
+[Code]
+// When the app updates itself, the installer inherits PyInstaller's internal
+// _PYI_* environment variables from the running app and passes them on to the
+// app relaunched by [Run] above. The relaunched app's bootloader then mistakes
+// this installer for its own parent process and fails with "Security validation
+// failure: parent process has different executable!". Setting this variable
+// tells the bootloader to ignore the inherited values and start fresh. Done here
+// (not only in the app) because older app versions launch the installer without
+// cleaning their environment.
+function SetEnvironmentVariable(lpName: String; lpValue: String): Boolean;
+  external 'SetEnvironmentVariableW@kernel32.dll stdcall';
+
+function InitializeSetup(): Boolean;
+begin
+  SetEnvironmentVariable('PYINSTALLER_RESET_ENVIRONMENT', '1');
+  Result := True;
+end;

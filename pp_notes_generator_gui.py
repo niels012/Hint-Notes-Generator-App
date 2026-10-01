@@ -15,13 +15,12 @@ except ImportError:
     import pyperclip
 
 # Application Details
-APP_VERSION = "1.4.0"
+APP_VERSION = "1.4.1"
 # Raw URL to fetch version configuration from GitHub
 VERSION_URL = "https://raw.githubusercontent.com/niels012/Hint-Notes-Generator-App/main/version.json"
 
 WHATS_NEW = [
-    "Selecting \"Others\" under \"What did you attach?\" now shows two quick options: "
-    "\"PP❌, spouse✅\" and \"PP✅, spouse❌\", which add the matching note.",
+    "Fixed a \"Security validation failure\" error that appeared when the app reopened after an update.",
 ]
 
 BG          = "#1E1E2E"
@@ -629,7 +628,17 @@ class PPNotesApp(tk.Tk):
                 # is what relaunches the app after install; letting Inno's Restart
                 # Manager ALSO relaunch the app it force-closed would start two
                 # instances.
-                subprocess.Popen([installer_path, "/SILENT", "/NORESTART", "/CLOSEAPPLICATIONS", "/NORESTARTAPPLICATIONS"])
+                #
+                # Strip PyInstaller's internal _PYI_* variables from the installer's
+                # environment. Otherwise the installer passes them on to the app it
+                # relaunches, whose bootloader then mistakes the installer for its
+                # own parent process and fails with "Security validation failure:
+                # parent process has different executable!".
+                installer_env = {k: v for k, v in os.environ.items()
+                                 if not k.upper().startswith("_PYI_")}
+                installer_env["PYINSTALLER_RESET_ENVIRONMENT"] = "1"
+                subprocess.Popen([installer_path, "/SILENT", "/NORESTART", "/CLOSEAPPLICATIONS", "/NORESTARTAPPLICATIONS"],
+                                 env=installer_env)
                 self.after(300, self.destroy)
 
             except Exception as err:
